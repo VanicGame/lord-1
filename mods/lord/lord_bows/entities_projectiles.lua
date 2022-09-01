@@ -27,24 +27,28 @@ local function punch_target(self, target, damage)
 end
 
 -- Обработка попадания взависимости от цели
-local function hit_handling(self, target, name, def)
+local function hit_handling(self, target, name, damage)
+	if target == nil then
+		return
+	end
+
 	-- Попадание по игроку
 	if target:is_player() then
-		punch_target(self, target, def.damage)
+		punch_target(self, target, damage)
+
+	--Столкновение двух стрел
+	elseif target:get_luaentity().name == name then
+		self.object:set_acceleration({x = 0, y = GRAVITY*-1, z = 0})
+		target:set_acceleration({x = 0, y = GRAVITY*-1, z = 0})
+
+	-- Попадание по сущности
 	else
-		--Столкновение двух стрел
-		if target:get_luaentity().name == name then
-			self.object:set_acceleration({x = 0, y = GRAVITY*-1, z = 0})
-			target:set_acceleration({x = 0, y = GRAVITY*-1, z = 0})
-		-- Попадание по сущности
-		else
-			punch_target(self, target, def.damage)
-		end
+		punch_target(self, target, damage)
 	end
 end
 
 -- Обработка столкновения
-local function collision_handling(self, moveresult, name, def)
+local function collision_handling(self, moveresult)
 	self.object:set_velocity({x = 0, y = 0, z = 0})
 	self.object:set_acceleration({x = 0, y = 0, z = 0})
 
@@ -60,7 +64,7 @@ local function collision_handling(self, moveresult, name, def)
 
 	local target = moveresult.collisions[1].object
 
-	hit_handling(self, target, name, def)
+	return target
 end
 
 local function flight_processing(self)
@@ -98,7 +102,10 @@ projectiles.register_projectile_arrow_type = function(name, item, def)
 		on_step = function(self, dtime, moveresult)
 
 			if moveresult.collides or moveresult.standing_on_object then
-				collision_handling(self, moveresult, name, def)
+				local target = collision_handling(self, moveresult)
+				if target then
+					hit_handling(self, target, name, def.damage)
+				end
 			else
 				flight_processing(self)
 			end
